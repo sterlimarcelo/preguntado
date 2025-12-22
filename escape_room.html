@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Escape Room - Camino de Emaús </title>
+<link rel="icon" href="logo-emaus.png" />
+<style>
+  :root{
+    --bg:#f0e6d2;
+    --card:#fff;
+    --accent:#8B4513;
+    --green:#4CAF50;
+    --red:#F44336;
+  }
+  body{
+    margin:0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(180deg,#efe7d7,#f8f3ee);
+    color:#222;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:24px;
+  }
+  .wrap{
+    width:980px;
+    max-width:96%;
+  }
+  header{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-bottom:12px;
+  }
+  header img{width:70px;height:70px;object-fit:contain}
+  header h1{margin:0;color:var(--accent);font-size:20px}
+  header p{margin:0;color:#444;font-size:14px}
+  .board{
+    display:grid;
+    grid-template-columns: 1fr 360px;
+    gap:18px;
+    align-items:start;
+  }
+  .card{
+    background:var(--card);
+    border-radius:12px;
+    padding:18px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.08);
+  }
+  #main {
+    min-height:520px;
+  }
+  .room-title{font-weight:700;color:var(--accent);margin-bottom:6px}
+  .narrative{font-size:14px;color:#333;margin-bottom:14px}
+  #progress-container{
+    background:#ddd;border-radius:8px;overflow:hidden;height:18px;margin:10px 0;
+  }
+  #progress-bar{height:18px;width:0;background:var(--green);transition:width 300ms}
+  #question{font-size:18px;margin:12px 0 8px}
+  .options{display:flex;flex-direction:column;gap:8px}
+  .option{
+    background:var(--green);color:#fff;border:none;padding:10px;border-radius:8px;cursor:pointer;font-size:15px;text-align:left;
+  }
+  .option:hover{filter:brightness(.95)}
+  #feedback{min-height:28px;margin-top:10px;font-weight:700}
+  #info-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}
+  .pill{background:#fafafa;border-radius:8px;padding:8px 10px;font-size:13px;border:1px solid #eee}
+  #keys{display:flex;gap:8px}
+  .key{background:linear-gradient(180deg,#fff,#f0e6d2);border:2px solid #eee;padding:6px 10px;border-radius:6px;font-weight:700;color:var(--accent)}
+  #controls{margin-top:12px;display:flex;gap:8px;align-items:center}
+  button.secondary{background:#eee;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+  button.primary{background:var(--accent);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer}
+  /* SIDE PANEL */
+  #side{position:relative}
+  #side h3{margin-top:0;color:var(--accent)}
+  #chartBox{display:flex;justify-content:center;align-items:center;padding:8px}
+  canvas{background:#fff;border-radius:8px}
+  .room-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .room-badge{padding:8px;border-radius:8px;background:#fafafa;border:1px solid #eee;font-size:13px}
+  .room-badge.locked{opacity:.5}
+  footer{margin-top:18px;text-align:center;color:#666;font-size:13px}
+  /* Small */
+  @media (max-width:900px){
+    .board{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="logo-emaus.png" alt="logo">
+    <div>
+      <h1>Escape Room — Camino de Emaús.</h1>
+      <p>5 salas · Basado en 100 preguntas · Responde para avanzar</p>
+    </div>
+  </header>
+
+  <div class="board">
+    <main id="main" class="card">
+      <div id="roomBox">
+        <div class="room-title" id="roomTitle">Sala 1 — El Camino</div>
+        <div class="narrative" id="roomNarrative">Comienzas tu caminata. Responde correctamente para obtener la llave que abre la siguiente puerta.</div>
+
+        <div id="progress-container"><div id="progress-bar"></div></div>
+
+        <div id="questionArea">
+          <div id="question">Cargando pregunta...</div>
+          <div class="options" id="options"></div>
+          <div id="feedback"></div>
+        </div>
+
+        <div id="info-row">
+          <div class="pill">Sala: <strong id="roomIndex">1</strong>/5</div>
+          <div class="pill">Aciertos totales: <strong id="scoreValue">0</strong></div>
+          <div class="pill">Errores totales: <strong id="incorrectValue">0</strong></div>
+          <div class="pill">Vidas: <strong id="lives">3</strong></div>
+          <div id="keys" class="pill">Llaves: <span id="keyList"></span></div>
+        </div>
+
+        <div id="controls">
+          <button class="secondary" onclick="showHint()">Pista</button>
+          <button class="primary" onclick="skipQuestion()">Saltar (pierde 1 vida)</button>
+        </div>
+      </div>
+
+      <div id="endBox" style="display:none;margin-top:16px">
+        <h2 id="endTitle"></h2>
+        <p id="endText"></p>
+        <div id="finalChartBox" style="display:flex;justify-content:center;margin-top:8px">
+          <canvas id="finalChart" width="260" height="260"></canvas>
+        </div>
+        <div style="text-align:center;margin-top:12px">
+          <button class="primary" onclick="restartAll()">Reiniciar</button>
+        </div>
+      </div>
+
+    </main>
+
+    <aside id="side" class="card">
+      <h3>Estado del Juego</h3>
+      <div class="room-list" id="roomBadges">
+        <!-- badges -->
+      </div>
+
+      <h3 style="margin-top:14px">Progreso (torta)</h3>
+      <div id="chartBox" style="margin-top:6px">
+        <canvas id="liveChart" width="260" height="260"></canvas>
+      </div>
+
+      <h3 style="margin-top:14px">Descripción rápida</h3>
+      <p style="color:#444;font-size:14px">Cada sala requiere <strong id="needPerRoom">20</strong> aciertos para desbloquearla. Errar, te impide pasar de Sala. Reúne las 5 llaves para ganar.</p>
+    </aside>
+  </div>
+
+  <footer class="card">
+    <small> ¿No ardía acaso nuestro corazón, mientras nos hablaba en el camino y nos explicaba las Escrituras?.</small>
+  </footer>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+/*
+  Prototipo Escape Room:
+  - 5 salas (etapas)
+  - Banco de preguntas: idéntico al original (se preserva el contenido).
+  - Las opciones se barajan cada vez; la posición correcta cambia.
+  - Para progresar: se requieren `neededPerRoom` aciertos en la sala.
+  - Se actualiza un gráfico de torta en tiempo real (verde/rojo).
+*/
+
+/* =========================
+   BANCO DE PREGUNTAS (copiar idéntico al original)
+   Aquí se incluyen las preguntas tal como estaban en tu archivo original.
+   Hecopiado el banco original tal cual. Si lo vas a usar, asegúrate que
+   este bloque contiene las 100 preguntas completas.
+   ========================= */
+
+const questions = [
+    {
+        question: "¿Qué significa la palabra 'Palanca' en el contexto espiritual de Emaús?",
+        options: ["Herramienta física para levantar objetos", "Ayuda espiritual para alcanzar objetivos", "Un tipo de oración", "Un lugar de encuentro"],
+        answer: 1
+    },
+    {
+        question: "¿Cuántas Bienaventuranzas hay en el Sermón de la Montaña?",
+        options: ["5", "7", "8", "10"],
+        answer: 2
+    },
+    {
+        question: "¿Qué hicieron los discípulos de Emaús cuando reconocieron a Jesús?",
+        options: ["Se quedaron en Emaús", "Volvieron corriendo a Jerusalén", "Se escondieron", "Fueron a contar a los sacerdotes"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'confidencialidad' como pilar de Emaús?",
+        options: ["Hablar de los problemas de los demás", "Guardar en el corazón las confidencias", "Compartir todo con los líderes", "Ignorar los problemas de los hermanos"],
+        answer: 1
+    },
+    {
+        question: "¿Qué representa el Camino de Emaús?",
+        options: ["Un viaje físico", "El camino de la fe y el encuentro con Cristo vivo", "Un lugar geográfico", "Un ritual"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la primera Bienaventuranza?",
+        options: ["Felices los que tienen alma de pobres", "Felices los afligidos", "Felices los misericordiosos", "Felices los que trabajan por la paz"],
+        answer: 0
+    },
+    {
+        question: "¿Qué significa 'bienaventurado' según el Papa Francisco?",
+        options: ["El que tiene muchos bienes", "El que está en condición de gracia y avanza en la amistad de Dios", "El que es feliz por sus logros", "El que vive sin problemas"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'unidad' como pilar de Emaús?",
+        options: ["Trabajar individualmente", "Tener una misión compartida y servir humildemente", "Ignorar las opiniones de los demás", "Seguir solo las propias ideas"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'obediencia' como pilar de Emaús?",
+        options: ["Hacer lo que uno quiere", "Seguir las instrucciones del coordinador y la estructura jerárquica", "Ignorar las reglas", "Hacer solo lo que nos conviene"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'humildad' como pilar de Emaús?",
+        options: ["Negar las propias fortalezas", "Ser sincero acerca de las propias debilidades", "Ignorar los errores", "Ocultar las debilidades"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es el 'servicio' como pilar de Emaús?",
+        options: ["Hacer lo que uno quiere", "Asistir, consolar y ver felices a los demás", "Ignorar las necesidades de los demás", "Servir solo a los amigos"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'amorosidad' como valor en Emaús?",
+        options: ["Ser estricto y duro", "Manifestar amor en la forma de tratar a los demás", "Ignorar los sentimientos", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'alegría' como valor en Emaús?",
+        options: ["Estar triste", "Un estado de ánimo producido por un acontecimiento favorable", "Ignorar las emociones", "No mostrar emociones"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es el 'trabajo en equipo' como valor en Emaús?",
+        options: ["Trabajar solo", "La unión de personas organizadas que cooperan para lograr un fin común", "Ignorar a los demás", "Hacer todo individualmente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'paciencia' en las Bienaventuranzas?",
+        options: ["Responder con violencia", "Actuar con calma y confianza", "Ignorar los problemas", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'misericordia' en las Bienaventuranzas?",
+        options: ["Ser indiferente", "Perdonar y ayudar al prójimo", "Ignorar las necesidades", "Ser egoísta"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'pureza de corazón' en las Bienaventuranzas?",
+        options: ["Ser deshonesto", "Transparencia y rectitud de intención", "Ocultar las intenciones", "Ser egoísta"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'paz' en las Bienaventuranzas?",
+        options: ["Crear conflictos", "Construir reconciliación y armonía", "Ignorar los problemas", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'justicia' en las Bienaventuranzas?",
+        options: ["Ignorar las injusticias", "Luchar por un mundo más justo", "Ser indiferente", "No hacer nada"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'persecución por la justicia' en las Bienaventuranzas?",
+        options: ["Evitar problemas", "Vivir según el Evangelio y sufrir oposición", "Ignorar las dificultades", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fe' en el Camino de Emaús?",
+        options: ["Dudar de todo", "Reconocer a Jesús en la Palabra y en el Pan", "Ignorar las señales", "No creer en nada"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'esperanza' en el Camino de Emaús?",
+        options: ["Perder la esperanza", "Transformar la tristeza en alegría", "Ignorar las emociones", "No hacer nada"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'misión' en el Camino de Emaús?",
+        options: ["No hacer nada", "Anunciar que Cristo está vivo", "Ignorar a los demás", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'confianza' en Emaús?",
+        options: ["Desconfiar de todos", "Crear un clima de respeto y responsabilidad", "Ignorar a los demás", "No confiar en nadie"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'escucha empática' en Emaús?",
+        options: ["No escuchar", "Escuchar respetuosamente y conectar con la inquietud del otro", "Ignorar los sentimientos", "No prestar atención"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'responsabilidad' en Emaús?",
+        options: ["No asumir compromisos", "Ser responsable y comprometido", "Ignorar las tareas", "No participar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'lealtad' en Emaús?",
+        options: ["Ser desleal", "Ser leal y considerado con los hermanos", "Ignorar a los demás", "No ser confiable"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'solidaridad' en Emaús?",
+        options: ["Ignorar las necesidades", "Ser solidario y ayudar a los demás", "No hacer nada", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'devoción' en Emaús?",
+        options: ["No ser devoto", "Ser devoto y comprometido", "Ignorar las creencias", "No practicar la fe"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'sabiduría' en Emaús?",
+        options: ["Ignorar el conocimiento", "Conocerse y aceptar las propias debilidades", "No aprender", "Ser ignorante"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'integridad' en Emaús?",
+        options: ["Ser deshonesto", "Ser íntegro y transparente", "No ser confiable", "Ocultar la verdad"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'transparencia' en Emaús?",
+        options: ["Ocultar información", "Ser transparente y sincero", "No ser claro", "Mentir"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'cohesión' en Emaús?",
+        options: ["Dividir al grupo", "Trabajar unidos y en armonía", "Ignorar al equipo", "No cooperar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'pertenencia' en Emaús?",
+        options: ["No sentirse parte", "Sentir pertenencia y compromiso con el grupo", "Ignorar al equipo", "No participar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'complementariedad' en Emaús?",
+        options: ["Trabajar solo", "Complementar las habilidades de los demás", "Ignorar las diferencias", "No cooperar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'comunicación' en Emaús?",
+        options: ["No comunicarse", "Comunicarse efectivamente", "Ignorar a los demás", "No hablar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es el 'liderazgo' en Emaús?",
+        options: ["No liderar", "Guiar y apoyar al equipo", "Ignorar el grupo", "No tomar decisiones"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es el 'compromiso' en Emaús?",
+        options: ["No comprometerse", "Estar comprometido con la misión", "Ignorar las responsabilidades", "No participar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'empatía' en Emaús?",
+        options: ["No entender a los demás", "Ponerse en el lugar del otro", "Ignorar los sentimientos", "No escuchar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'resiliencia' en Emaús?",
+        options: ["Rendirse ante las dificultades", "Superar las adversidades", "Ignorar los problemas", "No hacer nada"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'esperanza' en las Bienaventuranzas?",
+        options: ["Perder la esperanza", "Confiar en la promesa de Dios", "Ignorar las promesas", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'caridad' en Emaús?",
+        options: ["No ayudar", "Ayudar y amar al prójimo", "Ignorar las necesidades", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'paciencia' como valor en Emaús?",
+        options: ["Ser impaciente", "Actuar con calma y tolerancia", "Ignorar las situaciones", "No esperar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'tolerancia' en Emaús?",
+        options: ["No tolerar", "Respetar y aceptar las diferencias", "Ignorar a los demás", "No aceptar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'gratitud' en Emaús?",
+        options: ["No agradecer", "Ser agradecido y reconocer las bendiciones", "Ignorar los favores", "No valorar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fortaleza' en Emaús?",
+        options: ["Ser débil", "Ser fuerte y perseverante", "Ignorar las dificultades", "No resistir"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'templanza' en Emaús?",
+        options: ["Ser desmedido", "Actuar con moderación y equilibrio", "Ignorar los límites", "No controlar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'justicia social' en Emaús?",
+        options: ["Ignorar las injusticias", "Luchar por la equidad y el bien común", "No hacer nada", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fe en acción' en Emaús?",
+        options: ["No actuar", "Vivir la fe a través de acciones concretas", "Ignorar las oportunidades", "No participar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'unión' en Emaús?",
+        options: ["Dividir al grupo", "Estar unidos en un mismo propósito", "Ignorar al equipo", "No cooperar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fidelidad' en Emaús?",
+        options: ["Ser infiel", "Ser fiel a los compromisos y a Dios", "Ignorar las promesas", "No cumplir"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'esperanza en Dios' en Emaús?",
+        options: ["Perder la esperanza", "Confiar en las promesas de Dios", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'renovación espiritual' en Emaús?",
+        options: ["No cambiar", "Buscar una renovación constante en la fe", "Ignorar el crecimiento", "No evolucionar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'solidaridad cristiana' en Emaús?",
+        options: ["Ignorar a los necesitados", "Apoyar y ayudar a los hermanos en necesidad", "No hacer nada", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'unidad en la diversidad' en Emaús?",
+        options: ["Rechazar las diferencias", "Valorar y unir las diferencias", "Ignorar la diversidad", "No aceptar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'oración comunitaria' en Emaús?",
+        options: ["No rezar", "Orar juntos como comunidad", "Ignorar la oración", "No participar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'acogida' en Emaús?",
+        options: ["Rechazar a los nuevos", "Abrir las puertas y el corazón a los hermanos", "Ignorar a los demás", "No recibir"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'reconciliación' en Emaús?",
+        options: ["Mantener el rencor", "Buscar la paz y la reconciliación", "Ignorar los conflictos", "No perdonar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'evangelización' en Emaús?",
+        options: ["No compartir la fe", "Anunciar el Evangelio con alegría", "Ignorar la misión", "No hablar de Dios"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'formación continua' en Emaús?",
+        options: ["Dejar de aprender", "Buscar una formación constante en la fe", "Ignorar el conocimiento", "No estudiar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'responsabilidad social' en Emaús?",
+        options: ["Ignorar a la sociedad", "Comprometerse con el bien común", "No participar", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fraternidad' en Emaús?",
+        options: ["Ignorar a los hermanos", "Vivir como hermanos en comunidad", "No participar", "Ser individualista"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'misericordia divina' en Emaús?",
+        options: ["Ignorar el perdón", "Confiar en el perdón y amor de Dios", "No creer en la misericordia", "No perdonar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'esperanza en la resurrección' en Emaús?",
+        options: ["Dudar de la resurrección", "Creer en la vida eterna", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fe en comunidad' en Emaús?",
+        options: ["Vivir la fe solo", "Compartir y vivir la fe en comunidad", "Ignorar a los demás", "No participar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'unión con Cristo' en Emaús?",
+        options: ["Alejar a Cristo", "Estar unidos a Cristo en el camino", "Ignorar a Jesús", "No seguirlo"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fidelidad a la misión' en Emaús?",
+        options: ["Abandonar la misión", "Ser fiel al llamado y la misión", "Ignorar el compromiso", "No cumplir"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'confianza en Dios' en Emaús?",
+        options: ["No confiar", "Confiar plenamente en Dios", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'esperanza en la promesa' en Emaús?",
+        options: ["Dudar de las promesas", "Confiar en las promesas de Dios", "Ignorar la esperanza", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'unidad en Cristo' en Emaús?",
+        options: ["Dividir a la comunidad", "Estar unidos en Cristo", "Ignorar a los demás", "No participar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fe en la resurrección' en Emaús?",
+        options: ["No creer en la resurrección", "Creer en la resurrección de Cristo", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'esperanza en la vida eterna' en Emaús?",
+        options: ["Perder la esperanza", "Confiar en la vida eterna", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'unión en la oración' en Emaús?",
+        options: ["Orar individualmente", "Orar juntos como comunidad", "Ignorar la oración", "No participar"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fe en la providencia' en Emaús?",
+        options: ["No confiar en la providencia", "Confiar en la providencia divina", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'esperanza en la salvación' en Emaús?",
+        options: ["Dudar de la salvación", "Confiar en la salvación", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'unión en el amor' en Emaús?",
+        options: ["Ignorar el amor", "Estar unidos en el amor de Cristo", "No amar", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fe en la misericordia' en Emaús?",
+        options: ["No creer en la misericordia", "Confiar en la misericordia divina", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'esperanza en la gracia' en Emaús?",
+        options: ["Dudar de la gracia", "Confiar en la gracia de Dios", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'unión en la esperanza' en Emaús?",
+        options: ["Perder la esperanza", "Estar unidos en la esperanza", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fe en la justicia' en Emaús?",
+        options: ["Ignorar la justicia", "Confiar en la justicia divina", "No creer en la justicia", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'esperanza en la paz' en Emaús?",
+        options: ["Dudar de la paz", "Confiar en la paz de Cristo", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'unión en la fe' en Emaús?",
+        options: ["Ignorar la fe", "Estar unidos en la fe", "No creer", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fe en la verdad' en Emaús?",
+        options: ["Ignorar la verdad", "Confiar en la verdad de Dios", "No creer", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'esperanza en la unidad' en Emaús?",
+        options: ["Dudar de la unidad", "Confiar en la unidad de la comunidad", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'unión en la caridad' en Emaús?",
+        options: ["Ignorar la caridad", "Estar unidos en la caridad", "No amar", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fe en la unidad' en Emaús?",
+        options: ["Ignorar la unidad", "Confiar en la unidad de la comunidad", "No creer", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'esperanza en la comunidad' en Emaús?",
+        options: ["Dudar de la comunidad", "Confiar en la comunidad de fe", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'unión en la esperanza' en Emaús?",
+        options: ["Perder la esperanza", "Estar unidos en la esperanza", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'fe en la la comunidad' en Emaús?",
+        options: ["Ignorar la comunidad", "Confiar en la comunidad de fe", "No creer", "Ser indiferente"],
+        answer: 1
+    },
+    {
+        question: "¿Qué es la 'esperanza en la fe' en Emaús?",
+        options: ["Dudar de la fe", "Confiar en la fe", "Ignorar la fe", "No creer"],
+        answer: 1
+    },
+    // (Si el original contiene más preguntas, aquí deben añadirse exactamente igual)
+];
+
+/* =========================
+   FIN BANCO DE PREGUNTAS
+   ========================= */
+
+/* Juego y Configuración */
+const totalRooms = 5;
+const neededPerRoom = 20; // Número de aciertos necesarios por sala para desbloquear (ajustable)
+document.getElementById('needPerRoom').textContent = neededPerRoom;
+
+let shuffledQuestions = [];
+let rooms = []; // cada elemento: {questions: [], hitsNeeded, hitsAchieved}
+let currentRoom = 0;
+let currentIndexInRoom = 0;
+let score = 0;
+let incorrect = 0;
+let lives = 3;
+let keys = []; // llaves ganadas
+let liveChart; // Chart.js instancia
+
+/* UTILIDADES */
+function shuffleArray(arr){
+  return arr.slice().sort(()=>Math.random()-0.5);
+}
+
+/* Inicializar juego: mezclar preguntas y repartir en salas */
+function initGame(){
+  // validación: si no hay suficientes preguntas para repartir neededPerRoom*rooms
+  const total = questions.length;
+  if(total < totalRooms * 1){
+    alert('El banco de preguntas tiene pocas entradas. Añada más preguntas.');
+    return;
+  }
+  shuffledQuestions = shuffleArray(questions);
+  rooms = [];
+  // repartir equitativamente las preguntas en 5 salas
+  const perRoom = Math.floor(shuffledQuestions.length / totalRooms);
+  let idx = 0;
+  for(let r=0;r<totalRooms;r++){
+    const count = (r === totalRooms-1) ? (shuffledQuestions.length - idx) : perRoom;
+    rooms.push({
+      questions: shuffledQuestions.slice(idx, idx + count),
+      hitsNeeded: neededPerRoom,
+      hitsAchieved: 0
+    });
+    idx += count;
+  }
+  // reset estado
+  currentRoom = 0;
+  currentIndexInRoom = 0;
+  score = 0;
+  incorrect = 0;
+  lives = 3;
+  keys = [];
+  document.getElementById('scoreValue').textContent = score;
+  document.getElementById('incorrectValue').textContent = incorrect;
+  document.getElementById('lives').textContent = lives;
+  updateRoomBadges();
+  updateKeysDisplay();
+  initLiveChart();
+  showRoom(0);
+}
+
+/* Mostrar info de salas en lateral */
+function updateRoomBadges(){
+  const box = document.getElementById('roomBadges');
+  box.innerHTML = '';
+  for(let i=0;i<totalRooms;i++){
+    const r = rooms[i];
+    const div = document.createElement('div');
+    div.className = 'room-badge ' + (i>currentRoom ? 'locked':'');
+    div.innerHTML = `<strong>Sala ${i+1}</strong><div style="font-size:12px;color:#666">Aciertos: ${r.hitsAchieved}/${r.hitsNeeded}</div>`;
+    box.appendChild(div);
+  }
+}
+
+/* Mostrar la sala actual */
+function showRoom(roomIndex){
+  const room = rooms[roomIndex];
+  document.getElementById('roomIndex').textContent = (roomIndex+1);
+  const titles = [
+    'El Camino',
+    'El Encuentro',
+    'La Palabra',
+    'El Pan Compartido',
+    'El Regreso'
+  ];
+  const narratives = [
+    'Empieza la caminata. Observa el paisaje y reflexiona: la primera llave espera a quien escucha.',
+    'El encuentro se vuelve real. Responde y enciende las velas del corazón.',
+    'La Escritura abre la mente. Revela fragmentos para avanzar.',
+    'Cuando compartes el pan, te reconoces. Demuestra conocimiento comunitario.',
+    'Regresas con la misión; las preguntas finales sellan el llamado.'
+  ];
+  document.getElementById('roomTitle').textContent = `Sala ${roomIndex+1} — ${titles[roomIndex]}`;
+  document.getElementById('roomNarrative').textContent = narratives[roomIndex];
+  updateRoomBadges();
+  loadNextQuestion();
+}
+
+/* Cargar siguiente pregunta de la sala actual */
+function loadNextQuestion(){
+  const room = rooms[currentRoom];
+  if(!room) return;
+  // si ya alcanzó los hitsNeeded, desbloquea sala
+  if(room.hitsAchieved >= room.hitsNeeded){
+    // ya desbloqueada
+    unlockRoom(currentRoom);
+    return;
+  }
+  if(currentIndexInRoom >= room.questions.length){
+    // se acabaron preguntas en esta sala -> mezclar y reiniciar índice
+    room.questions = shuffleArray(room.questions);
+    currentIndexInRoom = 0;
+  }
+  const qOrig = room.questions[currentIndexInRoom];
+  const shuffled = qOrig.options.map((o,i)=>({text:o,index:i})).sort(()=>Math.random()-0.5);
+  const newAnswerIndex = shuffled.findIndex(it => it.index === qOrig.answer);
+  const q = {
+    question: qOrig.question,
+    options: shuffled.map(s=>s.text),
+    answer: newAnswerIndex,
+    originalIndex: currentIndexInRoom
+  };
+  renderQuestion(q);
+}
+
+/* Render de pregunta en DOM */
+function renderQuestion(q){
+  document.getElementById('question').textContent = q.question;
+  const optionsBox = document.getElementById('options');
+  optionsBox.innerHTML = '';
+  q.options.forEach((opt,i)=>{
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.textContent = opt;
+    btn.onclick = ()=> onAnswer(i,q);
+    optionsBox.appendChild(btn);
+  });
+  document.getElementById('feedback').textContent = '';
+  updateProgressBar();
+}
+
+/* Acción al responder */
+function onAnswer(selectedIndex,q){
+  const room = rooms[currentRoom];
+  const feedback = document.getElementById('feedback');
+  if(selectedIndex === q.answer){
+    feedback.textContent = '¡Correcto!';
+    feedback.style.color = 'green';
+    score++;
+    room.hitsAchieved++;
+    // si alcanza hitsNeeded, gana llave
+    if(room.hitsAchieved >= room.hitsNeeded){
+      feedback.textContent = 'Has conseguido la llave de esta sala.';
+      gainKey(currentRoom);
+    }
+  } else {
+    feedback.textContent = `Incorrecto. Respuesta correcta: ${q.options[q.answer]}`;
+    feedback.style.color = 'red';
+    incorrect++;
+    lives--;
+    document.getElementById('lives').textContent = lives;
+    if(lives <= 0){
+      // Game over
+      setTimeout(()=> endGame(false), 1000);
+      return;
+    }
+  }
+  // actualizar índices y estados
+  currentIndexInRoom++;
+  document.getElementById('scoreValue').textContent = score;
+  document.getElementById('incorrectValue').textContent = incorrect;
+  updateRoomBadges();
+  updateLiveChart();
+  // pequeña pausa y cargar siguiente
+  setTimeout(()=>{
+    // si room desbloqueada, pasar a siguiente sala automáticamente
+    if(room.hitsAchieved >= room.hitsNeeded){
+      // si era la última sala -> victoria
+      if(currentRoom === totalRooms-1){
+        endGame(true);
+        return;
+      } else {
+        currentRoom++;
+        currentIndexInRoom = 0;
+        showRoom(currentRoom);
+        return;
+      }
+    }
+    loadNextQuestion();
+  },900);
+}
+
+/* Skip question - pierde 1 vida */
+function skipQuestion(){
+  lives--;
+  document.getElementById('lives').textContent = lives;
+  if(lives<=0){
+    endGame(false);
+    return;
+  }
+  // avanzar índice y siguiente
+  currentIndexInRoom++;
+  loadNextQuestion();
+}
+
+/* Mostrar pista (breve) */
+function showHint(){
+  const room = rooms[currentRoom];
+  const qi = room.questions[currentIndexInRoom];
+  const feedback = document.getElementById('feedback');
+  if(!qi){ feedback.textContent = 'Sin pista disponible.'; return;}
+  // Pistas simples: mostrar parte de la respuesta correcta (primas palabras)
+  const correctText = qi.options[qi.answer];
+  const words = correctText.split(' ');
+  const hint = words.slice(0, Math.max(1,Math.floor(words.length/2))).join(' ');
+  feedback.textContent = `Pista: empieza con "${hint}"`;
+  feedback.style.color = '#444';
+  // usar pista podría costar 0. (si desea, en adelante se puede cobrar vidas)
+}
+
+/* Ganar llave */
+function gainKey(roomIndex){
+  if(!keys.includes(roomIndex)){
+    keys.push(roomIndex);
+    updateKeysDisplay();
+  }
+}
+
+/* Actualizar visual de llaves */
+function updateKeysDisplay(){
+  const list = document.getElementById('keyList');
+  list.innerHTML = '';
+  keys.sort().forEach(k=>{
+    const span = document.createElement('span');
+    span.className = 'key';
+    span.textContent = `Llave ${k+1}`;
+    list.appendChild(span);
+  });
+}
+
+/* Desbloquear sala (llamada cuando sala completa) */
+function unlockRoom(roomIndex){
+  // si ya hay llave, pasar a la siguiente sala
+  if(currentRoom < totalRooms-1){
+    currentRoom++;
+    currentIndexInRoom = 0;
+    showRoom(currentRoom);
+  } else {
+    endGame(true);
+  }
+}
+
+/* Barra de progreso global basada en porcentaje de preguntas respondidas */
+function updateProgressBar(){
+  // porcentaje basado en número de preguntas contestadas de todo el banco
+  const totalQuestions = shuffledQuestions.length;
+  const answered = score + incorrect;
+  const pct = Math.min(100, Math.round((answered / totalQuestions) * 100));
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+/* Chart en tiempo real */
+function initLiveChart(){
+  const ctx = document.getElementById('liveChart').getContext('2d');
+  if(liveChart) liveChart.destroy();
+  liveChart = new Chart(ctx, {
+    type:'pie',
+    data:{
+      labels:['Correctas','Incorrectas'],
+      datasets:[{data:[score,incorrect], backgroundColor:['#4CAF50','#F44336']}]
+    },
+    options:{responsive:false,plugins:{legend:{position:'bottom'}}}
+  });
+}
+
+function updateLiveChart(){
+  if(!liveChart) return;
+  liveChart.data.datasets[0].data = [score, incorrect];
+  liveChart.update();
+}
+
+/* Finalizar juego */
+function endGame(victory){
+  document.getElementById('roomBox').style.display = 'none';
+  document.getElementById('endBox').style.display = 'block';
+  const endTitle = document.getElementById('endTitle');
+  const endText = document.getElementById('endText');
+  if(victory){
+    endTitle.textContent = '¡Has completado el Camino de Emaús!';
+    endText.textContent = `Felicidades. Reuniste ${keys.length} llaves y obtuviste ${score} aciertos y ${incorrect} errores.`;
+  } else {
+    endTitle.textContent = 'Juego terminado';
+    endText.textContent = `Perdiste tus vidas. Resultado: ${score} aciertos y ${incorrect} errores. Intenta otra vez.`;
+  }
+  // mostrar gráfico final
+  const ctx = document.getElementById('finalChart').getContext('2d');
+  new Chart(ctx,{type:'pie',data:{labels:['Correctas','Incorrectas'],datasets:[{data:[score,incorrect],backgroundColor:['#4CAF50','#F44336']}]},options:{responsive:false,plugins:{legend:{position:'bottom'}}}});
+}
+
+/* Reiniciar todo */
+function restartAll(){
+  document.getElementById('endBox').style.display = 'none';
+  document.getElementById('roomBox').style.display = 'block';
+  initGame();
+}
+
+/* Inicialización */
+initGame();
+
+</script>
+</body>
+</html>

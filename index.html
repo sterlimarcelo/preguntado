@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caminar Emaús</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background: linear-gradient(to bottom, #f2f2f2, #e6e6e6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 15px;
+}
+
+/* LOGO */
+.logo {
+    width: 200px;
+    max-width: 80%;
+    margin-bottom: -70px; /* 🔥 superposición */
+    z-index: 2;
+}
+
+/* TARJETA */
+.card {
+    background: #ffffff;
+    max-width: 750px;
+    width: 100%;
+    padding: 80px 30px 40px;
+    border-radius: 20px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.12);
+    text-align: center;
+    position: relative;
+}
+
+/* TITULOS */
+h1 {
+    font-size: 2.8em;
+    color: #2c3e50;
+    margin-bottom: 15px;
+}
+
+.sub {
+    font-style: italic;
+    color: #666;
+    margin-bottom: 30px;
+    font-size: 1.2em;
+}
+
+/* TEXTO */
+p {
+    font-size: 1.15em;
+    color: #333;
+    line-height: 1.7;
+    margin-bottom: 20px;
+}
+
+/* BOTON */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 32px;
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    border-radius: 40px;
+    margin-top: 20px;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+}
+
+/* ICONO */
+.icon {
+    font-size: 18px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+    .logo {
+        width: 150px;
+        margin-bottom: -50px;
+    }
+
+    h1 {
+        font-size: 2em;
+    }
+
+    .card {
+        padding: 70px 20px 30px;
+    }
+}
+</style>
+
+</head>
+<body>
+
+<!-- LOGO -->
+<img src="fondo.png" class="logo" alt="Logo Emaús">
+
+<!-- TARJETA -->
+<div class="card">
+
+    <h1>Caminar Emaús</h1>
+
+    <div class="sub">“Quédate con nosotros, Señor…”</div>
+
+    <p>
+        Hay caminos que transforman el corazón. Este no es solo un retiro… es un encuentro.
+    </p>
+
+    <p>
+        Animate a descubrir a Jesús caminando a tu lado, a reconocerlo en lo simple,
+        en lo cotidiano, en lo profundo de tu vida.
+    </p>
+
+    <a class="btn" href="https://drive.google.com/file/d/15Lo6VbRCWFm_k7EEfa00IhiE8zwRLA7V/view?usp=sharing" target="_blank">
+        <span class="icon">⬇</span>
+        Descargar formulario de inscripción
+    </a>
+
+</div>
+
+</body>
+</html>
